@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>பதில் பாட ஒழுங்கு | Substitute Cover Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Tamil:wght@500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --ink:#1B2240;
+  --ink-soft:#56607F;
+  --paper:#EEF2FB;
+  --paper-dim:#E6ECF9;
+  --card:#FFFFFF;
+  --line:#D3DBEC;
+  --accent:#2F5BEA;
+  --accent-dark:#2347C0;
+  --accent-soft:#DDE6FD;
+  --green:#0F9D74;
+  --green-soft:#D6F3E9;
+  --red:#DC2F4A;
+  --red-soft:#FDE0E5;
+  --amber:#B7791F;
+  --amber-soft:#FCEFCB;
+  --radius:8px;
+  --shadow:0 2px 10px rgba(27,42,107,0.08);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Noto Sans Tamil','Inter',system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.5;
+}
+h1,h2,h3,.display{
+  font-family:'Noto Serif Tamil',Georgia,serif;
+  font-weight:600;
+  letter-spacing:0.1px;
+  margin:0;
+}
+button{font-family:inherit;}
+::selection{background:var(--accent-soft);}
+
+/* ---------- layout ---------- */
+#appShell{display:flex;min-height:100vh;}
+#sidebar{
+  width:250px;flex-shrink:0;background:var(--ink);color:#EDE7D6;
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+#sidebar .brand{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,0.12);}
+#sidebar .brand .mark{font-family:'Noto Serif Tamil',serif;font-size:19px;font-weight:700;color:#F3E1C8;line-height:1.3;}
+#sidebar .brand .sub{font-size:11.5px;color:#B9C4BC;margin-top:3px;}
+#sidebar nav{padding:14px 10px;flex:1;}
+.navitem{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius);
+  color:#D9D2BE;cursor:pointer;font-size:13.5px;margin-bottom:2px;border-left:3px solid transparent;
+}
+.navitem .ico{width:18px;text-align:center;font-size:15px;}
+.navitem:hover{background:rgba(255,255,255,0.06);}
+.navitem.active{background:rgba(201,122,43,0.18);border-left-color:var(--accent);color:#FFF;}
+#sidebar .foot{padding:14px 18px;font-size:10.5px;color:#8B9990;border-top:1px solid rgba(255,255,255,0.1);}
+
+#main{flex:1;min-width:0;}
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 26px;background:var(--paper);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:20;
+}
+#topbar .titles h1{font-size:20px;}
+#topbar .titles .en{font-size:12px;color:var(--ink-soft);margin-top:1px;}
+#menuBtn{display:none;background:none;border:1px solid var(--line);border-radius:var(--radius);width:36px;height:36px;font-size:16px;cursor:pointer;}
+#dateBadge{font-size:12px;color:var(--ink-soft);border:1px solid var(--line);padding:6px 10px;border-radius:var(--radius);background:var(--card);}
+#content{padding:22px 26px 60px;max-width:1180px;}
+
+/* ---------- cards & ledger elements ---------- */
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:18px 20px;margin-bottom:18px;
+}
+.card h2{font-size:16.5px;margin-bottom:4px;}
+.card .subhead{font-size:12px;color:var(--ink-soft);margin-bottom:14px;}
+.hr{border:none;border-top:1px solid var(--line);margin:14px 0;}
+
+.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.stat{
+  background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);
+  border-radius:var(--radius);padding:14px 16px;
+}
+.stat.green{border-left-color:var(--green);}
+.stat.red{border-left-color:var(--red);}
+.stat.amber{border-left-color:var(--amber);}
+.stat .num{font-family:'Noto Serif Tamil',serif;font-size:28px;font-weight:700;line-height:1;}
+.stat .lbl{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+
+.btn{
+  display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--radius);
+  border:1px solid var(--ink);background:var(--ink);color:#FAF7EF;font-size:13px;font-weight:600;
+  cursor:pointer;white-space:nowrap;
+}
+.btn:hover{background:#0E1912;}
+.btn.primary{background:var(--accent);border-color:var(--accent-dark);color:#fff;}
+.btn.primary:hover{background:var(--accent-dark);}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);}
+.btn.ghost:hover{border-color:var(--ink);}
+.btn.sm{padding:6px 11px;font-size:12px;}
+.btn:disabled{opacity:0.45;cursor:not-allowed;}
+.btn.danger{background:var(--red);border-color:var(--red);}
+
+input[type=text],input[type=date],input[type=number],select,textarea{
+  font-family:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius);
+  background:#fff;font-size:13.5px;color:var(--ink);
+}
+select:disabled{opacity:0.5}
+label.f{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:5px;}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th{
+  text-align:left;font-size:11.5px;text-transform:none;color:var(--ink-soft);
+  border-bottom:2px solid var(--ink);padding:8px 10px;font-weight:600;background:var(--paper-dim);
+}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle;}
+tr:hover td{background:var(--paper-dim);}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);}
+
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge.free{background:var(--green-soft);color:var(--green);}
+.badge.busy{background:var(--paper-dim);color:var(--ink-soft);}
+.badge.absent{background:var(--red-soft);color:var(--red);}
+.badge.warn{background:var(--amber-soft);color:var(--amber);}
+.badge.locked{background:var(--accent-soft);color:var(--accent-dark);}
+
+.uploadbox{
+  border:2px dashed var(--line);border-radius:6px;padding:34px 20px;text-align:center;
+  background:var(--paper-dim);cursor:pointer;
+}
+.uploadbox:hover{border-color:var(--accent);}
+.uploadbox .big{font-size:34px;margin-bottom:8px;}
+
+.chip{
+  display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--line);
+  border-radius:20px;font-size:13px;cursor:pointer;margin:3px 5px 3px 0;background:#fff;
+}
+.chip.on{background:var(--red-soft);border-color:var(--red);color:var(--red);font-weight:600;}
+.chip input{display:none;}
+
+.toast{
+  position:fixed;bottom:20px;right:20px;left:auto;background:var(--ink);color:#fff;padding:12px 18px;
+  border-radius:var(--radius);font-size:13px;z-index:200;max-width:320px;box-shadow:0 4px 18px rgba(0,0,0,0.2);
+}
+.modalbg{position:fixed;inset:0;background:rgba(20,25,20,0.55);display:flex;align-items:center;justify-content:center;z-index:300;padding:16px;}
+.modal{background:#fff;border-radius:6px;max-width:520px;width:100%;padding:24px;max-height:88vh;overflow-y:auto;}
+
+.empty{padding:34px 18px;text-align:center;color:var(--ink-soft);}
+.empty .big{font-size:30px;margin-bottom:8px;}
+
+.mobilecards{display:none;}
+.tag-priority{font-size:10.5px;padding:1px 7px;border-radius:10px;background:var(--paper-dim);color:var(--ink-soft);}
+.printonly{display:none;}
+
+/* ---------- colourful professional theme ---------- */
+body{background:linear-gradient(180deg,#E9EFFB 0%,#F3EFFA 100%);background-attachment:fixed;}
+#sidebar{background:linear-gradient(180deg,#1B2A6B 0%,#2A2078 55%,#3B1F6E 100%);box-shadow:2px 0 14px rgba(27,42,107,0.25);}
+#sidebar .brand{border-bottom:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.05);}
+#sidebar .brand .mark{color:#FFD27A;}
+#sidebar .brand .sub{color:#C9D3F5;}
+.navitem{color:#DDE3FA;}
+.navitem:hover{background:rgba(255,255,255,0.10);}
+.navitem.active{background:linear-gradient(90deg,rgba(255,176,59,0.30),rgba(255,176,59,0.06));border-left-color:#FFB03B;color:#fff;font-weight:600;}
+.navitem:nth-child(1) .ico{color:#7CB4FF;}
+.navitem:nth-child(2) .ico{color:#5FE0B5;}
+.navitem:nth-child(3) .ico{color:#FFD27A;}
+.navitem:nth-child(4) .ico{color:#FF9BB0;}
+.navitem:nth-child(5) .ico{color:#C4A8FF;}
+.navitem:nth-child(6) .ico{color:#7FE3F0;}
+.navitem:nth-child(7) .ico{color:#FFB37A;}
+.navitem:nth-child(8) .ico{color:#A9E87F;}
+.navitem:nth-child(9) .ico{color:#FF9BE0;}
+.navitem:nth-child(10) .ico{color:#B8C4F0;}
+#sidebar .foot{color:#AEB9E6;border-top:1px solid rgba(255,255,255,0.15);}
+#topbar{background:#fff;border-bottom:3px solid transparent;border-image:linear-gradient(90deg,#2F5BEA,#7C3AED,#E8590C,#0F9D74) 1;box-shadow:0 2px 10px rgba(27,42,107,0.08);}
+#topbar .titles h1{color:#1B2A6B;}
+#menuBtn{background:#fff;color:#1B2A6B;border-color:#BCCBF7;}
+#dateBadge{background:var(--accent-soft);border-color:#BCCBF7;color:var(--accent-dark);font-weight:600;}
+.card{border-top:3px solid var(--accent);box-shadow:var(--shadow);}
+.card h2{color:#1B2A6B;}
+.stat{background:linear-gradient(135deg,#fff 40%,#E3EBFF);border:1px solid #CBD8F8;border-left:5px solid var(--accent);box-shadow:var(--shadow);}
+.stat .num{color:var(--accent-dark);}
+.stat.green{background:linear-gradient(135deg,#fff 40%,#D6F3E9);border-color:#B5E6D3;border-left-color:var(--green);}
+.stat.green .num{color:#0A7A59;}
+.stat.red{background:linear-gradient(135deg,#fff 40%,#FDE0E5);border-color:#F7C3CD;border-left-color:var(--red);}
+.stat.red .num{color:#B71C36;}
+.stat.amber{background:linear-gradient(135deg,#fff 40%,#FCEFCB);border-color:#F3DC96;border-left-color:#E8A317;}
+.stat.amber .num{color:#9A6208;}
+.btn{background:linear-gradient(135deg,#1B2A6B,#2A3C9A);border-color:#1B2A6B;color:#fff;box-shadow:0 1px 3px rgba(27,42,107,0.25);}
+.btn:hover{background:linear-gradient(135deg,#142059,#1F2F85);}
+.btn.primary{background:linear-gradient(135deg,#2F5BEA,#7C3AED);border-color:#2F5BEA;color:#fff;}
+.btn.primary:hover{background:linear-gradient(135deg,#2347C0,#6527D1);}
+.btn.ghost{background:#fff;color:#1B2A6B;border:1px solid #BCCBF7;box-shadow:none;}
+.btn.ghost:hover{background:var(--accent-soft);border-color:var(--accent);}
+.btn.danger{background:linear-gradient(135deg,#DC2F4A,#B71C36);border-color:#B71C36;color:#fff;}
+input[type=text],input[type=date],input[type=number],select,textarea{border-color:#BCCBF7;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,91,234,0.15);}
+.tablewrap{border-color:#C5D2F2;box-shadow:var(--shadow);}
+.tablewrap th{background:linear-gradient(180deg,#E8EEFD,#DAE4FB);color:#1B2A6B;border-bottom:2px solid var(--accent);}
+.tablewrap tbody tr:nth-child(even) td{background:#F6F8FE;}
+.tablewrap tbody tr:hover td{background:#E6EDFD;}
+.badge{border:1px solid transparent;}
+.badge.free{background:#D6F3E9;color:#0A7A59;border-color:#A8E0CB;}
+.badge.busy{background:#E8EAF3;color:#4A5478;border-color:#D3D8EA;}
+.badge.absent{background:#FDE0E5;color:#B71C36;border-color:#F7B8C3;}
+.badge.warn{background:#FCEFCB;color:#8A5A0B;border-color:#F3D98B;}
+.badge.locked{background:#E6DBFB;color:#5B21B6;border-color:#CDB8F5;}
+.badge.skip{background:#DDF3FA;color:#0B6580;border-color:#A9DDEC;}
+.uploadbox{background:linear-gradient(135deg,#EEF3FF,#F5EFFF);border-color:#9DB4F5;}
+.uploadbox:hover{border-color:var(--accent);background:linear-gradient(135deg,#E4ECFF,#EEE5FF);}
+.chip{background:var(--green-soft);border-color:#A8E0CB;color:#0A7A59;}
+.chip:hover{box-shadow:0 2px 6px rgba(27,42,107,0.15);}
+.chip.on{background:var(--red-soft);border-color:var(--red);color:#B71C36;}
+.tag-priority{background:#E3EBFF;color:var(--accent-dark);}
+.toast{background:#1B2A6B;}
+.modal{border-top:5px solid var(--red);}
+#pageFooter{color:var(--ink-soft);}
+
+@media print{
+  #sidebar,#topbar,.noprint{display:none !important;}
+  #content{padding:0;max-width:100%;}
+  body{background:#fff;}
+  .card{border:1px solid var(--line);box-shadow:none;}
+  .tablewrap.desktop-only,.mobilecards{display:none !important;}
+  .printonly{display:block !important;}
+}
+
+@media (max-width:880px){
+  #sidebar{
+    position:fixed;left:0;top:0;height:100vh;transform:translateX(-100%);transition:transform 0.2s ease;z-index:100;
+  }
+  #sidebar.open{transform:translateX(0);}
+  #menuBtn{display:block;}
+  #content{padding:16px 14px 50px;}
+  .statgrid{grid-template-columns:repeat(2,1fr);}
+  .tablewrap.desktop-only{display:none;}
+  .mobilecards{display:block;}
+  #topbar{padding:12px 14px;}
+  #topbar .titles h1{font-size:17px;}
+}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:90;display:none;}
+.overlay.show{display:block;}
+</style>
+</head>
+<body>
+<div id="appShell">
+  <div id="overlay" class="overlay" onclick="toggleSidebar(false)"></div>
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="mark">பதில் பாடம்</div>
+      <div class="sub">Substitute Cover Manager</div>
+    </div>
+    <nav id="navList"></nav>
+    <div class="foot">App Developed by M. Nishanthan</div>
+  </aside>
+  <div id="main">
+    <div id="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button id="menuBtn" onclick="toggleSidebar()">☰</button>
+        <div class="titles">
+          <h1 id="pageTitleTa">முகப்பு</h1>
+          <div class="en" id="pageTitleEn">Dashboard</div>
+        </div>
+      </div>
+      <div id="dateBadge"></div>
+    </div>
+    <div id="content"></div>
+    <div id="pageFooter" style="text-align:center;padding:16px 20px 26px;font-size:11.5px;color:var(--ink-soft);border-top:1px solid var(--line);margin:0 26px;">App Developed by M. Nishanthan</div>
+  </div>
+</div>
+
+<script>
+/* ============================= STATE ============================= */
+const NAV = [
+  {id:'dashboard', ta:'முகப்பு', en:'Dashboard', ico:'▦'},
+  {id:'excel', ta:'Excel நேர அட்டவணை நிர்வாகம்', en:'Excel Timetable Management', ico:'⇪'},
+  {id:'master', ta:'பிரதான நேர அட்டவணை', en:'Master Timetable', ico:'▤'},
+  {id:'daily', ta:'இன்றைய பதில் பாடம்', en:'Today\'s Substitute Duty', ico:'✎'},
+  {id:'teacherwise', ta:'ஆசிரியர் வாரியான பார்வை', en:'Teacher-wise View', ico:'☺'},
+  {id:'periodwise', ta:'பாடவேளை வாரியான பார்வை', en:'Period-wise View', ico:'⏱'},
+  {id:'classwise', ta:'வகுப்பு வாரியான பார்வை', en:'Class-wise View', ico:'▥'},
+  {id:'history', ta:'கடந்த நாள் பதிவுகள்', en:'Daily History', ico:'🗂'},
+  {id:'reports', ta:'பதில் பாட எண்ணிக்கை', en:'Duty Count Report', ico:'📊'},
+  {id:'settings', ta:'அமைப்புகள்', en:'Settings', ico:'⚙'},
+];
+
+let state = {
+  tab:'dashboard',
+  master:null,        // {rows, teachers, periods, classes, subjects, fileName, uploadDate, versionId, scheduleIndex}
+  versions:[],
+  settings:{schoolName:'எனது பள்ளி / My School', address:'', logo:null, langOrder:'ta-en'},
+  currentDate: todayStr(),
+  daily:null,          // record for currentDate: {date, absentTeachers[], assignments[], generated:bool}
+  historyDates:[],
+  historyView:null,    // loaded record for viewing from history
+  toastMsg:null,
+  overrideModal:null,  // {index}
+  excelPreview:null,
+  allDailyRecords:null,   // loaded lazily for reports page
+  reportGranularity:'day', // day | week | month
+  reportRefDate: todayStr(),
+};
+
+function todayStr(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+function fmtDate(iso){
+  const [y,m,d] = iso.split('-');
+  return `${d}-${m}-${y}`;
+}
+
+/* ============================= STORAGE ============================= */
+/* This file is meant to be downloaded and opened as a normal web page, so it
+   cannot rely on the Claude-artifact-only window.storage API. We use the
+   browser's own localStorage (works offline, persists on this device/browser)
+   and only use window.storage if this ever happens to run inside a live
+   Claude artifact panel. */
+const LS_PREFIX = 'substituteApp:';
+const hasPlatformStorage = () => (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.set === 'function');
+
+async function saveKV(key, value){
+  const json = JSON.stringify(value);
+  try{
+    if(hasPlatformStorage()){
+      await window.storage.set(key, json, false);
+    } else {
+      localStorage.setItem(LS_PREFIX+key, json);
+    }
+  }catch(e){
+    try{ localStorage.setItem(LS_PREFIX+key, json); }
+    catch(e2){
+      console.error('save failed', key, e2);
+      showToast('சேமிப்பில் பிழை / Storage error — இந்த சாதனத்தில் Local Storage முடக்கப்பட்டுள்ளது போல் தெரிகிறது / local storage seems to be blocked on this device/browser.');
+    }
+  }
+}
+async function loadKV(key){
+  try{
+    if(hasPlatformStorage()){
+      const r = await window.storage.get(key, false);
+      return r ? JSON.parse(r.value) : null;
+    } else {
+      const v = localStorage.getItem(LS_PREFIX+key);
+      return v ? JSON.parse(v) : null;
+    }
+  }catch(e){
+    try{
+      const v = localStorage.getItem(LS_PREFIX+key);
+      return v ? JSON.parse(v) : null;
+    }catch(e2){ return null; }
+  }
+}
+async function deleteKV(key){
+  try{
+    if(hasPlatformStorage()){ await window.storage.delete(key, false); }
+    else localStorage.removeItem(LS_PREFIX+key);
+  }catch(e){}
+}
+async function listDailyKeys(){
+  try{
+    if(hasPlatformStorage()){
+      const res = await window.storage.list('daily:', false);
+      return (res && res.keys) ? res.keys : [];
+    } else {
+      const keys = [];
+      for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(k && k.startsWith(LS_PREFIX+'daily:')) keys.push(k.slice(LS_PREFIX.length));
+      }
+      return keys;
+    }
+  }catch(e){ return []; }
+}
+
+async function loadEverything(){
+  const [master, versions, settings, historyDates] = await Promise.all([
+    loadKV('master-timetable'), loadKV('versions'), loadKV('settings'), loadKV('daily-dates')
+  ]);
+  if(master){ state.master = master; rebuildScheduleIndex(); }
+  if(versions) state.versions = versions;
+  if(settings) state.settings = Object.assign(state.settings, settings);
+  if(historyDates) state.historyDates = historyDates;
+  await loadDailyForCurrentDate();
+  render();
+}
+
+async function loadDailyForCurrentDate(){
+  const rec = await loadKV('daily:'+state.currentDate);
+  state.daily = rec || {date: state.currentDate, absentTeachers: [], assignments: [], generated:false};
+}
+
+/* ============================= EXCEL PARSING ============================= */
+const taCollator = new Intl.Collator(['ta','en'], {sensitivity:'base', numeric:true});
+const COLUMN_ALIASES = {
+  serial: ['தொடர் இலக்கம்','தொடர் இல','தொடர் இல.','தொடர்','serial','serial no','s.no','sno','no','sl no','sl.no'],
+  teacher: ['ஆசிரியரின் பெயர்','ஆசிரியர் பெயர்','ஆசிரியர்','teacher name','teacher','staff name','staff'],
+  period: ['பாட வேளை','பாடவேளை','period','period no','pd','pd no','periods'],
+  subject: ['கற்பிக்கும் பாடம்','பாடம்','கற்பிக்கும்','subject','subject name'],
+  klass: ['வகுப்பு','class','grade','class/grade']
+};
+function normHeader(h){
+  return String(h||'').trim().toLowerCase().replace(/\s+/g,' ');
+}
+function normNoSpace(h){
+  return normHeader(h).replace(/[\s.]+/g,'');
+}
+function matchColumn(header){
+  const norm = normHeader(header);
+  const noSpace = normNoSpace(header);
+  const rawTrim = String(header||'').trim();
+  for(const key in COLUMN_ALIASES){
+    for(const alias of COLUMN_ALIASES[key]){
+      if(normHeader(alias) === norm || alias === rawTrim || normNoSpace(alias) === noSpace) return key;
+    }
+  }
+  return null;
+}
+
+function parseWorkbook(workbook){
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const rows2d = XLSX.utils.sheet_to_json(sheet, {header:1, raw:false, defval:''});
+  if(!rows2d.length) return {error:'Excel கோப்பில் தரவு இல்லை / The Excel file has no data.'};
+
+  // find header row: scan first 5 rows for one that maps teacher+period+subject+klass
+  let headerRowIdx = -1, colMap = null;
+  for(let r=0; r<Math.min(6, rows2d.length); r++){
+    const row = rows2d[r];
+    const map = {};
+    row.forEach((cell,ci) => { const k = matchColumn(cell); if(k && map[k]===undefined) map[k]=ci; });
+    if(map.teacher!==undefined && map.period!==undefined && map.subject!==undefined && map.klass!==undefined){
+      headerRowIdx = r; colMap = map; break;
+    }
+  }
+  if(headerRowIdx===-1){
+    const missing = [];
+    if(!colMap || colMap.teacher===undefined) missing.push('ஆசிரியரின் பெயர் / Teacher Name');
+    if(!colMap || colMap.period===undefined) missing.push('பாட வேளை / Period');
+    if(!colMap || colMap.subject===undefined) missing.push('கற்பிக்கும் பாடம் / Subject');
+    if(!colMap || colMap.klass===undefined) missing.push('வகுப்பு / Class');
+    return {error: `தேவையான கோலம் கிடைக்கவில்லை / Required column(s) not found: ${missing.join(', ')}. தயவுசெய்து சரியான வடிவமைப்புடன் Excel கோப்பை பதிவேற்றவும் / Please upload an Excel file with the required format.`};
+  }
+
+  const rows = [];
+  for(let r=headerRowIdx+1; r<rows2d.length; r++){
+    const raw = rows2d[r];
+    if(!raw || raw.every(c=>String(c||'').trim()==='')) continue;
+    const teacher = String(raw[colMap.teacher]||'').trim();
+    const period = String(raw[colMap.period]||'').trim();
+    const subject = String(raw[colMap.subject]||'').trim();
+    const klass = String(raw[colMap.klass]||'').trim();
+    if(!teacher || !period) continue;
+    const isFree = (subject==='—' || subject==='-' || subject==='' || klass==='—' || klass==='-');
+    rows.push({teacher, period, subject: isFree?'—':subject, klass: isFree?'—':klass, free:isFree});
+  }
+  if(!rows.length) return {error:'செல்லுபடியான நேர அட்டவணை தரவு கிடைக்கவில்லை / No valid timetable rows were found.'};
+
+  const teachers = [...new Set(rows.map(r=>r.teacher))].sort(taCollator.compare);
+  const periods = [...new Set(rows.map(r=>r.period))].sort((a,b)=>{
+    const na=parseFloat(a), nb=parseFloat(b);
+    if(!isNaN(na)&&!isNaN(nb)) return na-nb;
+    return String(a).localeCompare(String(b));
+  });
+  const classes = [...new Set(rows.filter(r=>!r.free).map(r=>r.klass))].sort();
+  const subjects = [...new Set(rows.filter(r=>!r.free).map(r=>r.subject))].sort();
+
+  return {rows, teachers, periods, classes, subjects};
+}
+
+function rebuildScheduleIndex(){
+  if(!state.master) return;
+  const idx = {};
+  state.master.rows.forEach(r=>{ idx[r.teacher+'||'+r.period] = r; });
+  state.master.scheduleIndex = idx;
+}
+function isTeacherFreeAt(teacher, period){
+  if(!state.master) return false;
+  const row = state.master.scheduleIndex[teacher+'||'+period];
+  if(!row) return true; // not scheduled this period => treated as free
+  return !!row.free;
+}
+
+/* ============================= FILE UPLOAD HANDLERS ============================= */
+function triggerFileSelect(){ document.getElementById('excelFileInput').click(); }
+
+function handleFileChosen(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellText:true});
+      const result = parseWorkbook(wb);
+      if(result.error){
+        state.excelPreview = {error: result.error, fileName: file.name};
+      } else {
+        state.excelPreview = {...result, fileName: file.name, error:null};
+      }
+    }catch(err){
+      state.excelPreview = {error: 'Excel கோப்பை படிக்க முடியவில்லை / Could not read this Excel file: '+err.message, fileName: file.name};
+    }
+    input.value = '';
+    render();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function confirmReplaceTimetable(){
+  const p = state.excelPreview;
+  if(!p || p.error) return;
+  const versionId = 'v'+Date.now();
+  const newMaster = {
+    rows:p.rows, teachers:p.teachers, periods:p.periods, classes:p.classes, subjects:p.subjects,
+    fileName:p.fileName, uploadDate: new Date().toISOString(), versionId
+  };
+  // mark old versions inactive
+  state.versions = state.versions.map(v=>({...v, active:false}));
+  state.versions.unshift({
+    id:versionId, fileName:p.fileName, uploadDate:newMaster.uploadDate,
+    teacherCount:p.teachers.length, recordCount:p.rows.length, active:true
+  });
+  state.master = newMaster;
+  rebuildScheduleIndex();
+  state.excelPreview = null;
+  await saveKV('master-timetable', state.master);
+  await saveKV('versions', state.versions);
+  showToast('நேர அட்டவணை புதுப்பிக்கப்பட்டது / Timetable updated successfully');
+  state.tab = 'master';
+  render();
+}
+function cancelPreview(){ state.excelPreview = null; render(); }
+
+/* ============================= ABSENT TEACHERS / GENERATE ============================= */
+function toggleAbsent(teacher){
+  if(!state.daily) return;
+  const i = state.daily.absentTeachers.indexOf(teacher);
+  if(i===-1) state.daily.absentTeachers.push(teacher); else state.daily.absentTeachers.splice(i,1);
+  render();
+}
+function selectAllAbsent(){
+  state.daily.absentTeachers = [...state.master.teachers];
+  render();
+}
+function clearAllAbsent(){
+  state.daily.absentTeachers = [];
+  render();
+}
+async function onDateChange(newDate){
+  await persistDailyIfNeeded();
+  state.currentDate = newDate;
+  await loadDailyForCurrentDate();
+  render();
+}
+async function persistDailyIfNeeded(){
+  if(state.daily && (state.daily.absentTeachers.length || state.daily.assignments.length)){
+    await saveKV('daily:'+state.daily.date, state.daily);
+    if(!state.historyDates.includes(state.daily.date)){
+      state.historyDates.push(state.daily.date);
+      state.historyDates.sort().reverse();
+      await saveKV('daily-dates', state.historyDates);
+    }
+  }
+}
+
+function generateSubstitutes(){
+  if(!state.master){ showToast('முதலில் Excel நேர அட்டவணையை பதிவேற்றவும் / Please upload a timetable first'); return; }
+  const absent = state.daily.absentTeachers;
+  const prevAssignments = state.daily.assignments || [];
+  const lockedByKey = {};
+  prevAssignments.filter(a=>a.locked||a.skipped).forEach(a=>{ lockedByKey[a.period+'||'+a.klass+'||'+a.subject+'||'+a.absentTeacher] = a; });
+
+  const affected = state.master.rows.filter(r => absent.includes(r.teacher) && !r.free);
+  affected.sort((a,b)=>{
+    const pa=parseFloat(a.period), pb=parseFloat(b.period);
+    if(!isNaN(pa)&&!isNaN(pb) && pa!==pb) return pa-pb;
+    return String(a.period).localeCompare(String(b.period)) || a.klass.localeCompare(b.klass);
+  });
+
+  const usedPerPeriod = {}; // period -> Set of teacher names already used as substitute
+  const subCountToday = {};
+  const assignments = [];
+
+  affected.forEach(row=>{
+    const key = row.period+'||'+row.klass+'||'+row.subject+'||'+row.teacher;
+    if(!usedPerPeriod[row.period]) usedPerPeriod[row.period] = new Set();
+
+    if(lockedByKey[key]){
+      const locked = lockedByKey[key];
+      assignments.push(locked);
+      if(locked.substitute){
+        usedPerPeriod[row.period].add(locked.substitute);
+        subCountToday[locked.substitute] = (subCountToday[locked.substitute]||0)+1;
+      }
+      return;
+    }
+
+    const candidates = state.master.teachers.filter(t=>
+      !absent.includes(t) &&
+      isTeacherFreeAt(t, row.period) &&
+      !usedPerPeriod[row.period].has(t)
+    );
+
+    let chosen = null, priority = null;
+    const sameSubject = candidates.filter(t => state.master.rows.some(r=>r.teacher===t && !r.free && r.subject===row.subject));
+    const sameClass = candidates.filter(t => state.master.rows.some(r=>r.teacher===t && !r.free && r.klass===row.klass));
+
+    function pickLowestLoad(list){
+      return list.slice().sort((a,b)=> (subCountToday[a]||0) - (subCountToday[b]||0))[0];
+    }
+    if(sameSubject.length){ chosen = pickLowestLoad(sameSubject); priority = 1; }
+    else if(sameClass.length){ chosen = pickLowestLoad(sameClass); priority = 2; }
+    else if(candidates.length){ chosen = pickLowestLoad(candidates); priority = 3; }
+
+    if(chosen){
+      usedPerPeriod[row.period].add(chosen);
+      subCountToday[chosen] = (subCountToday[chosen]||0)+1;
+    }
+    assignments.push({
+      period: row.period, klass: row.klass, subject: row.subject, absentTeacher: row.teacher,
+      substitute: chosen, priority, locked:false, manual:false, conflict:false, skipped:false
+    });
+  });
+
+  state.daily.assignments = assignments;
+  state.daily.generated = true;
+  persistDailyIfNeeded();
+  showToast('பதில் பாட ஒழுங்கு உருவாக்கப்பட்டது / Substitute timetable generated');
+  render();
+}
+
+function eligibleSubsForRow(idx){
+  const a = state.daily.assignments[idx];
+  const used = new Set();
+  state.daily.assignments.forEach((x,i)=>{ if(i!==idx && x.substitute) used.add(x.substitute); });
+  return state.master.teachers.filter(t=> !state.daily.absentTeachers.includes(t) && isTeacherFreeAt(t,a.period) && !used.has(t));
+}
+
+function manualAssign(idx, teacherName, override){
+  const a = state.daily.assignments[idx];
+  if(!teacherName){ a.substitute=null; a.manual=false; a.conflict=false; render(); persistDailyIfNeeded(); return; }
+  const eligible = eligibleSubsForRow(idx);
+  const isConflict = !eligible.includes(teacherName);
+  if(isConflict && !override){
+    state.overrideModal = {idx, teacherName};
+    render();
+    return;
+  }
+  a.substitute = teacherName; a.manual = true; a.conflict = isConflict; a.skipped = false;
+  state.overrideModal = null;
+  render();
+  persistDailyIfNeeded();
+}
+function confirmOverride(){
+  if(!state.overrideModal) return;
+  manualAssign(state.overrideModal.idx, state.overrideModal.teacherName, true);
+}
+function cancelOverride(){ state.overrideModal=null; render(); }
+function toggleSkip(idx){
+  const a = state.daily.assignments[idx];
+  if(!a.skipped){
+    a.skipped = true; a.substitute = null; a.locked = false; a.manual = false; a.conflict = false; a.priority = null;
+  } else {
+    a.skipped = false;
+  }
+  render();
+  persistDailyIfNeeded();
+}
+function toggleLock(idx){
+  state.daily.assignments[idx].locked = !state.daily.assignments[idx].locked;
+  render();
+  persistDailyIfNeeded();
+}
+
+/* ============================= EXPORT ============================= */
+function exportExcel(){
+  if(!state.daily || !state.daily.assignments.length){ showToast('ஏற்றுமதி செய்ய தரவு இல்லை / No data to export'); return; }
+  const data = state.daily.assignments.map(a=>({
+    'திகதி / Date': fmtDate(state.daily.date),
+    'பாட வேளை / Period': a.period,
+    'வகுப்பு / Class': a.klass,
+    'பாடம் / Subject': a.subject,
+    'விடுமுறை ஆசிரியர் / Absent Teacher': a.absentTeacher,
+    'பதில் ஆசிரியர் / Substitute': a.substitute || (a.skipped ? 'தவிர்க்கப்பட்டது / Skipped' : 'ஒதுக்கப்படவில்லை / Unassigned'),
+    'நிலை / Status': a.skipped ? 'Skipped' : (a.locked ? 'Locked' : (a.manual ? 'Manual' : 'Auto'))
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Substitutes');
+  XLSX.writeFile(wb, `substitute_${state.daily.date}.xlsx`);
+}
+function printDaily(){ window.print(); }
+
+/* ============================= HISTORY ============================= */
+async function openHistoryDate(date){
+  const rec = await loadKV('daily:'+date);
+  state.historyView = rec;
+  render();
+}
+
+/* ============================= SETTINGS ============================= */
+async function saveSettings(form){
+  state.settings.schoolName = form.schoolName.value.trim() || state.settings.schoolName;
+  state.settings.address = form.address.value.trim();
+  state.settings.langOrder = form.langOrder.value;
+  await saveKV('settings', state.settings);
+  showToast('அமைப்புகள் சேமிக்கப்பட்டன / Settings saved');
+  render();
+}
+function handleLogoUpload(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    state.settings.logo = e.target.result;
+    await saveKV('settings', state.settings);
+    render();
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ============================= UI HELPERS ============================= */
+function showToast(msg){
+  state.toastMsg = msg;
+  render();
+  setTimeout(()=>{ state.toastMsg=null; render(); }, 3000);
+}
+function toggleSidebar(force){
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('overlay');
+  const open = force!==undefined ? force : !sb.classList.contains('open');
+  sb.classList.toggle('open', open);
+  ov.classList.toggle('show', open);
+}
+async function goTab(tab){
+  await persistDailyIfNeeded();
+  state.tab = tab;
+  state.historyView = null;
+  toggleSidebar(false);
+  render();
+  if(tab==='reports' && state.allDailyRecords===null){
+    await loadAllDailyRecords();
+    render();
+  }
+}
+
+async function loadAllDailyRecords(){
+  try{
+    const keys = await listDailyKeys();
+    const records = [];
+    for(const k of keys){
+      const r = await loadKV(k);
+      if(r) records.push(r);
+    }
+    // include the currently open (possibly unsaved) day too
+    if(state.daily && (state.daily.absentTeachers.length || state.daily.assignments.length) && !records.some(r=>r.date===state.daily.date)){
+      records.push(state.daily);
+    }
+    state.allDailyRecords = records;
+  }catch(e){
+    state.allDailyRecords = [];
+  }
+}
+
+function toISODate(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+function startOfWeek(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const day = d.getDay();
+  const diff = (day===0? -6 : 1) - day;
+  d.setDate(d.getDate()+diff);
+  return toISODate(d);
+}
+function endOfWeek(dateStr){
+  const s = startOfWeek(dateStr);
+  const d = new Date(s+'T00:00:00');
+  d.setDate(d.getDate()+6);
+  return toISODate(d);
+}
+function monthRange(dateStr){
+  const [y,m] = dateStr.split('-');
+  const start = `${y}-${m}-01`;
+  const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
+  const end = `${y}-${m}-${String(lastDay).padStart(2,'0')}`;
+  return [start,end];
+}
+function setReportGranularity(g){ state.reportGranularity = g; render(); }
+function setReportRefDate(v){ state.reportRefDate = v; render(); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ============================= RENDER: SHELL ============================= */
+function render(){
+  renderSidebar();
+  const nav = NAV.find(n=>n.id===state.tab);
+  document.getElementById('pageTitleTa').textContent = nav.ta;
+  document.getElementById('pageTitleEn').textContent = nav.en;
+  document.getElementById('dateBadge').textContent = state.master ? `Excel: ${state.master.fileName}` : 'Excel பதிவேற்றப்படவில்லை / No timetable uploaded';
+
+  let html = '';
+  switch(state.tab){
+    case 'dashboard': html = renderDashboard(); break;
+    case 'excel': html = renderExcelPage(); break;
+    case 'master': html = renderMasterPage(); break;
+    case 'daily': html = renderDailyPage(); break;
+    case 'teacherwise': html = renderTeacherWise(); break;
+    case 'periodwise': html = renderPeriodWise(); break;
+    case 'classwise': html = renderClassWise(); break;
+    case 'history': html = renderHistory(); break;
+    case 'reports': html = renderReports(); break;
+    case 'settings': html = renderSettings(); break;
+  }
+  document.getElementById('content').innerHTML = html;
+
+  const oldModal = document.querySelector('.modalbg'); if(oldModal) oldModal.remove();
+  if(state.overrideModal) renderOverrideModal();
+  if(state.toastMsg) renderToast();
+}
+
+function renderSidebar(){
+  document.getElementById('navList').innerHTML = NAV.map(n=>`
+    <div class="navitem ${state.tab===n.id?'active':''}" onclick="goTab('${n.id}')">
+      <span class="ico">${n.ico}</span>
+      <span>${n.ta} <span style="opacity:.6;font-size:11px;">/ ${n.en}</span></span>
+    </div>`).join('');
+}
+function renderToast(){
+  const old = document.querySelector('.toast'); if(old) old.remove();
+  const d = document.createElement('div'); d.className='toast noprint'; d.textContent = state.toastMsg;
+  document.body.appendChild(d);
+}
+function renderOverrideModal(){
+  const old = document.querySelector('.modalbg'); if(old) old.remove();
+  const d = document.createElement('div'); d.className='modalbg';
+  const a = state.daily.assignments[state.overrideModal.idx];
+  d.innerHTML = `<div class="modal">
+    <h2 style="margin-bottom:10px;">⚠️ முரண்பாடு / Conflict</h2>
+    <p style="font-size:13.5px;color:var(--ink-soft);">இந்த ஆசிரியர் ${a.period}-ஆம் பாட வேளையில் ஏற்கனவே பாடம் நடத்துகிறார் / <b>${esc(state.overrideModal.teacherName)}</b> is already teaching during Period ${esc(a.period)}.</p>
+    <p style="font-size:13px;margin-top:10px;">நிர்வாகி இந்த ஒதுக்கீட்டை மேலெழுத விரும்புகிறீர்களா? / Do you want to override and assign anyway?</p>
+    <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end;">
+      <button class="btn ghost" onclick="cancelOverride()">ரத்து செய் / Cancel</button>
+      <button class="btn danger" onclick="confirmOverride()">மேலெழுது / Override & Assign</button>
+    </div>
+  </div>`;
+  document.body.appendChild(d);
+}
+
+/* ============================= PAGE: DASHBOARD ============================= */
+function renderDashboard(){
+  if(!state.master){
+    return emptyState('▦','நேர அட்டவணை இல்லை / No timetable yet','தொடங்க Excel நேர அட்டவணையை பதிவேற்றவும் / Upload your Excel timetable to get started.','Excel பதிவேற்று / Upload Excel','excel');
+  }
+  const d = state.daily;
+  const affectedClasses = new Set(d.assignments.map(a=>a.klass)).size;
+  const affectedPeriods = new Set(d.assignments.map(a=>a.period)).size;
+  const assignedCount = d.assignments.filter(a=>a.substitute).length;
+  const unassignedCount = d.assignments.filter(a=>!a.substitute && !a.skipped).length;
+  const conflictCount = d.assignments.filter(a=>a.conflict).length;
+
+  return `
+  <div class="statgrid">
+    ${stat(state.master.teachers.length,'மொத்த ஆசிரியர்கள் / Total Teachers','')}
+    ${stat(d.absentTeachers.length,'இன்று விடுமுறை / Absent Today','red')}
+    ${stat(affectedClasses,'பாதிக்கப்பட்ட வகுப்புகள் / Affected Classes','amber')}
+    ${stat(affectedPeriods,'பாதிக்கப்பட்ட பாட வேளைகள் / Affected Periods','amber')}
+    ${stat(assignedCount,'பதில் பணிகள் / Substitute Duties','green')}
+    ${stat(unassignedCount,'ஒதுக்கப்படாதவை / Unassigned','red')}
+    ${stat(conflictCount,'முரண்பாடுகள் / Conflicts','red')}
+    ${stat(state.master.rows.length,'நேர அட்டவணை பதிவுகள் / Timetable Records','')}
+  </div>
+  <div class="card">
+    <h2>தற்போதைய நேர அட்டவணை / Current Timetable</h2>
+    <div class="subhead">${esc(state.master.fileName)} — பதிவேற்றப்பட்டது / Uploaded ${new Date(state.master.uploadDate).toLocaleDateString()}</div>
+    <div style="display:flex;gap:22px;flex-wrap:wrap;font-size:13px;">
+      <div><b>${state.master.teachers.length}</b> ஆசிரியர்கள் / Teachers</div>
+      <div><b>${state.master.periods.length}</b> பாட வேளைகள் / Periods</div>
+      <div><b>${state.master.classes.length}</b> வகுப்புகள் / Classes</div>
+      <div><b>${state.master.subjects.length}</b> பாடங்கள் / Subjects</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>${fmtDate(state.currentDate)} — இன்றைய நிலை / Today's Status</h2>
+    ${d.absentTeachers.length===0 ? `<p style="color:var(--ink-soft);font-size:13.5px;">இன்று விடுமுறை ஆசிரியர்கள் இன்னும் தேர்ந்தெடுக்கப்படவில்லை / No absent teachers marked yet for today.</p>
+      <button class="btn primary sm" onclick="goTab('daily')">ஆசிரியரை குறிக்கவும் / Mark Absent Teachers →</button>`
+      : `<p style="font-size:13.5px;">${d.absentTeachers.length} ஆசிரியர்(கள்) விடுமுறையில் — ${d.generated ? assignedCount+' பணிகள் உருவாக்கப்பட்டன' : 'இன்னும் உருவாக்கப்படவில்லை'} / ${d.absentTeachers.length} teacher(s) absent — ${d.generated ? assignedCount+' duties generated' : 'not yet generated'}.</p>
+      <button class="btn primary sm" onclick="goTab('daily')">பார்வையிடு / Review →</button>`}
+  </div>`;
+}
+function stat(num,lbl,cls){
+  return `<div class="stat ${cls}"><div class="num">${num}</div><div class="lbl">${lbl}</div></div>`;
+}
+function emptyState(icon,taTitle,desc,btnLabel,gotoTab){
+  return `<div class="card empty">
+    <div class="big">${icon}</div>
+    <h2>${taTitle}</h2>
+    <p style="margin:8px 0 16px;">${desc}</p>
+    <button class="btn primary" onclick="goTab('${gotoTab}')">${btnLabel}</button>
+  </div>`;
+}
+
+/* ============================= PAGE: EXCEL MANAGEMENT ============================= */
+function renderExcelPage(){
+  let out = '';
+  if(state.excelPreview){
+    const p = state.excelPreview;
+    if(p.error){
+      out += `<div class="card" style="border-left:4px solid var(--red);">
+        <h2>⚠️ பிழை / Error reading file</h2>
+        <p style="font-size:13.5px;margin-top:6px;">${esc(p.error)}</p>
+        <button class="btn ghost sm" style="margin-top:12px;" onclick="cancelPreview()">மூடு / Close</button>
+      </div>`;
+    } else {
+      out += `<div class="card" style="border-left:4px solid var(--accent);">
+        <h2>Excel முன்னோட்டம் / Preview</h2>
+        <div class="subhead">${esc(p.fileName)}</div>
+        <div class="statgrid" style="margin-top:10px;">
+          ${stat(p.teachers.length,'ஆசிரியர்கள் / Teachers','')}
+          ${stat(p.periods.length,'பாட வேளைகள் / Periods','')}
+          ${stat(p.classes.length,'வகுப்புகள் / Classes','')}
+          ${stat(p.subjects.length,'பாடங்கள் / Subjects','')}
+        </div>
+        <p style="font-size:13px;color:var(--ink-soft);">மொத்தம் ${p.rows.length} நேர அட்டவணை பதிவுகள் கண்டறியப்பட்டன / ${p.rows.length} timetable records detected.</p>
+        <div class="tablewrap" style="max-height:260px;overflow-y:auto;margin:12px 0;">
+          <table><thead><tr><th>Teacher</th><th>Period</th><th>Subject</th><th>Class</th></tr></thead>
+          <tbody>${p.rows.slice(0,12).map(r=>`<tr><td>${esc(r.teacher)}</td><td>${esc(r.period)}</td><td>${r.free?'<span class="badge free">FREE</span>':esc(r.subject)}</td><td>${r.free?'—':esc(r.klass)}</td></tr>`).join('')}</tbody></table>
+        </div>
+        <p style="font-size:12px;color:var(--ink-soft);">முதல் 12 வரிகள் காட்டப்படுகின்றன / Showing first 12 rows.</p>
+        <div class="hr"></div>
+        <p style="font-weight:600;">தற்போதைய நேர அட்டவணையை இந்த கோப்பினால் மாற்றவா? / Replace current timetable with this Excel file?</p>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <button class="btn primary" onclick="confirmReplaceTimetable()">✔ மாற்று / Replace Timetable</button>
+          <button class="btn ghost" onclick="cancelPreview()">ரத்து செய் / Cancel</button>
+        </div>
+      </div>`;
+    }
+  }
+
+  out += `<div class="card">
+    <h2>புதிய நேர அட்டவணையை பதிவேற்று / Upload New Timetable</h2>
+    <div class="subhead">தேவையான 5 கோலங்கள்: தொடர் இலக்கம், ஆசிரியரின் பெயர், பாட வேளை, கற்பிக்கும் பாடம், வகுப்பு</div>
+    <div class="uploadbox" onclick="triggerFileSelect()">
+      <div class="big">📁</div>
+      <div style="font-weight:600;">Excel நேர அட்டவணையை பதிவேற்று / Upload Excel Timetable</div>
+      <div style="font-size:12px;color:var(--ink-soft);margin-top:4px;">.xlsx / .xls — கிளிக் செய்யவும் / Click to browse</div>
+    </div>
+    <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none;" onchange="handleFileChosen(this)">
+  </div>`;
+
+  if(state.versions.length){
+    out += `<div class="card">
+      <h2>நேர அட்டவணை பதிப்புகள் / Timetable Versions</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>File</th><th>Uploaded</th><th>Teachers</th><th>Records</th><th>Status</th></tr></thead>
+        <tbody>${state.versions.map(v=>`<tr>
+          <td>${esc(v.fileName)}</td>
+          <td>${new Date(v.uploadDate).toLocaleDateString()}</td>
+          <td>${v.teacherCount}</td><td>${v.recordCount}</td>
+          <td>${v.active?'<span class="badge free">Active / செயலில்</span>':'<span class="badge busy">Archived</span>'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
+  }
+  return out;
+}
+
+/* ============================= PAGE: MASTER TIMETABLE ============================= */
+function renderMasterPage(){
+  if(!state.master) return emptyState('▤','நேர அட்டவணை இல்லை / No timetable','Excel பதிவேற்றவும்','Excel பதிவேற்று / Upload Excel','excel');
+  const m = state.master;
+  return `<div class="card">
+    <h2>பிரதான நேர அட்டவணை / Master Timetable</h2>
+    <div class="subhead">${esc(m.fileName)} · ${m.rows.length} பதிவுகள் / records</div>
+    <div class="tablewrap" style="max-height:560px;overflow-y:auto;">
+      <table><thead><tr><th>Teacher</th><th>Period</th><th>Subject</th><th>Class</th></tr></thead>
+      <tbody>${m.rows.map(r=>`<tr><td>${esc(r.teacher)}</td><td>${esc(r.period)}</td>
+        <td>${r.free?'<span class="badge free">FREE / —</span>':esc(r.subject)}</td>
+        <td>${r.free?'—':esc(r.klass)}</td></tr>`).join('')}</tbody></table>
+    </div>
+  </div>`;
+}
+
+/* ============================= PAGE: DAILY (absent + generate + review) ============================= */
+function renderDailyPage(){
+  if(!state.master) return emptyState('✎','நேர அட்டவணை இல்லை / No timetable','முதலில் Excel பதிவேற்றவும்','Excel பதிவேற்று / Upload Excel','excel');
+  const d = state.daily;
+  const q = window.__teacherSearch || '';
+  const filteredTeachers = state.master.teachers.filter(t=>t.toLowerCase().includes(q.toLowerCase()));
+
+  const presentCount = state.master.teachers.length - d.absentTeachers.length;
+  let html = `<div class="card noprint">
+    <h2>இன்றைய வரவு / வரவின்மை பதிவு / Today's Attendance</h2>
+    <div class="subhead">முதலில் ஒவ்வொரு ஆசிரியரின் வரவு நிலையை பதிவு செய்யவும். கீழே கிளிக் செய்தால் அந்த ஆசிரியர் "வரவின்மை" (விடுமுறை) என குறிக்கப்படுவார் — மீண்டும் கிளிக் செய்தால் "வரவு" ஆக மாறும் / Mark each teacher's attendance below. Click a name to mark them Absent; click again to mark them Present.</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
+      <div><label class="f">திகதி / Date</label>
+        <input type="date" value="${state.currentDate}" onchange="onDateChange(this.value)">
+      </div>
+      <div style="flex:1;min-width:180px;"><label class="f">ஆசிரியரை தேடு / Search teacher</label>
+        <input type="text" placeholder="Search..." style="width:100%;" oninput="window.__teacherSearch=this.value; renderTeacherChipsOnly();">
+      </div>
+      <button class="btn ghost sm" onclick="selectAllAbsent()">அனைவரும் வரவின்மை / Mark All Absent</button>
+      <button class="btn ghost sm" onclick="clearAllAbsent()">அனைவரும் வரவு / Mark All Present</button>
+    </div>
+    <div style="display:flex;gap:18px;font-size:13px;margin-bottom:10px;">
+      <div><span class="badge free">வரவு / Present: ${presentCount}</span></div>
+      <div><span class="badge absent">வரவின்மை / Absent: ${d.absentTeachers.length}</span></div>
+    </div>
+    <div id="teacherChips">${filteredTeachers.map(t=>chipHtml(t,d.absentTeachers.includes(t))).join('')}</div>
+    <div class="hr"></div>
+    <button class="btn primary" onclick="generateSubstitutes()" ${d.absentTeachers.length===0?'disabled':''}>
+      வரவு / வரவின்மை பதிவு செய்த பின் — பதில் பாட ஒழுங்கை உருவாக்கு / Generate Substitute Timetable
+    </button>
+  </div>`;
+
+  if(d.generated || d.assignments.length){
+    html += renderAssignmentsCard();
+  }
+  return html;
+}
+function chipHtml(t,on){
+  return `<label class="chip ${on?'on':''}"><input type="checkbox" ${on?'checked':''} onchange="toggleAbsent('${esc(t).replace(/'/g,"\\'")}')">${on?'☑':'☐'} ${esc(t)}</label>`;
+}
+function renderTeacherChipsOnly(){
+  const q = window.__teacherSearch || '';
+  const filteredTeachers = state.master.teachers.filter(t=>t.toLowerCase().includes(q.toLowerCase()));
+  document.getElementById('teacherChips').innerHTML = filteredTeachers.map(t=>chipHtml(t,state.daily.absentTeachers.includes(t))).join('');
+}
+
+function renderAssignmentsCard(){
+  const d = state.daily;
+  const rows = d.assignments;
+  return `<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;" class="noprint">
+      <h2 style="margin:0;">பதில் பாட ஒழுங்கு / Substitute Assignments — ${fmtDate(state.currentDate)}</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="btn ghost sm" onclick="printDaily()">🖨 அச்சிடு / Print / PDF</button>
+        <button class="btn ghost sm" onclick="exportExcel()">⇩ Excel ஏற்றுமதி / Export</button>
+      </div>
+    </div>
+    <div id="printArea">
+      <div class="printonly" id="printOnlyArea">
+        <div style="text-align:center;margin-bottom:16px;">
+          ${state.settings.logo?`<img src="${state.settings.logo}" style="height:50px;margin-bottom:6px;">`:''}
+          <div style="font-family:'Noto Serif Tamil',serif;font-size:19px;font-weight:700;">${esc(state.settings.schoolName)}</div>
+          <div style="font-size:13px;margin-top:3px;">தினசரி பதில் பாட ஒழுங்கு அட்டவணை / DAILY SUBSTITUTE / COVER PERIOD TIMETABLE</div>
+          <div style="font-size:12px;margin-top:4px;">திகதி / Date: ${fmtDate(state.currentDate)}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr>
+            <th style="border:1px solid #333;padding:6px;background:#eee;">Period</th>
+            <th style="border:1px solid #333;padding:6px;background:#eee;">Class</th>
+            <th style="border:1px solid #333;padding:6px;background:#eee;">Subject</th>
+            <th style="border:1px solid #333;padding:6px;background:#eee;">Absent Teacher</th>
+            <th style="border:1px solid #333;padding:6px;background:#eee;">Substitute</th>
+            <th style="border:1px solid #333;padding:6px;background:#eee;min-width:120px;">Signature</th>
+          </tr></thead>
+          <tbody>${rows.map(a=>`<tr>
+            <td style="border:1px solid #333;padding:6px;">${esc(a.period)}</td>
+            <td style="border:1px solid #333;padding:6px;">${esc(a.klass)}</td>
+            <td style="border:1px solid #333;padding:6px;">${esc(a.subject)}</td>
+            <td style="border:1px solid #333;padding:6px;">${esc(a.absentTeacher)}</td>
+            <td style="border:1px solid #333;padding:6px;">${a.substitute?esc(a.substitute):(a.skipped?'Skipped':'Unassigned')}</td>
+            <td style="border:1px solid #333;padding:6px;height:30px;"></td>
+          </tr>`).join('')}</tbody>
+        </table>
+        <div style="display:flex;justify-content:space-between;margin-top:34px;font-size:12px;">
+          <div>Prepared by: ________________________</div>
+          <div>Signature: ________________________</div>
+        </div>
+        <div style="text-align:center;margin-top:26px;font-size:11px;color:#555;">App Developed by M. Nishanthan</div>
+      </div>
+      <div class="tablewrap desktop-only" style="margin-top:10px;">
+        <table>
+          <thead><tr><th>Period</th><th>Class</th><th>Subject</th><th>Absent Teacher</th><th>Substitute</th><th class="noprint">Priority</th><th class="noprint">Lock</th><th class="noprint">தவிர் / Skip</th></tr></thead>
+          <tbody>${rows.map((a,i)=>renderAssignmentRow(a,i)).join('')}</tbody>
+        </table>
+      </div>
+      <div class="mobilecards">
+        ${rows.map((a,i)=>renderAssignmentCard(a,i)).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+function subCell(a){
+  return a.substitute ? esc(a.substitute) : (a.skipped ? '<span class="badge skip">⏭ தவிர்க்கப்பட்டது / Skipped</span>' : '<span class="badge warn">Unassigned</span>');
+}
+function renderSkippedRow(a,i){
+  return `<tr>
+    <td>${esc(a.period)}</td><td>${esc(a.klass)}</td><td>${esc(a.subject)}</td>
+    <td><span class="badge absent">${esc(a.absentTeacher)}</span></td>
+    <td><span class="badge skip">⏭ தவிர்க்கப்பட்டது / Skipped</span></td>
+    <td class="noprint"><span class="tag-priority">-</span></td>
+    <td class="noprint"><button class="btn ghost sm" disabled>🔓</button></td>
+    <td class="noprint"><button class="btn primary sm" onclick="toggleSkip(${i})">↺ மீட்டெடு / Undo</button></td>
+  </tr>`;
+}
+function renderSkippedCard(a,i){
+  return `<div class="card" style="margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;"><b>Period ${esc(a.period)}</b><span>${esc(a.klass)}</span></div>
+    <div style="font-size:13px;color:var(--ink-soft);margin:4px 0;">${esc(a.subject)}</div>
+    <div style="margin:6px 0;"><span class="badge absent">Absent: ${esc(a.absentTeacher)}</span></div>
+    <div><span class="badge skip">⏭ தவிர்க்கப்பட்டது / Skipped</span></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+      <button class="btn primary sm" onclick="toggleSkip(${i})">↺ மீட்டெடு / Undo</button>
+    </div>
+  </div>`;
+}
+function priorityLabel(p){
+  return p===1?'ஒரே பாடம் / Same Subject':p===2?'ஒரே வகுப்பு / Same Class':p===3?'கிடைக்கும் / Free Teacher':'-';
+}
+function renderAssignmentRow(a,i){
+  if(a.skipped) return renderSkippedRow(a,i);
+  const eligible = eligibleSubsForRow(i);
+  const opts = state.master.teachers.filter(t=>!state.daily.absentTeachers.includes(t));
+  return `<tr>
+    <td>${esc(a.period)}</td><td>${esc(a.klass)}</td><td>${esc(a.subject)}</td>
+    <td><span class="badge absent">${esc(a.absentTeacher)}</span></td>
+    <td>
+      ${a.locked ? `<span class="badge locked">🔒 ${esc(a.substitute)}</span>` : `
+      <select onchange="manualAssign(${i}, this.value, false)" ${a.locked?'disabled':''}>
+        <option value="">${a.substitute? '-- மாற்று / Change --' : '-- தேர்ந்தெடு / Select --'}</option>
+        ${opts.map(t=>`<option value="${esc(t)}" ${a.substitute===t?'selected':''}>${esc(t)}${eligible.includes(t)?'':' ⚠️ busy'}</option>`).join('')}
+      </select>`}
+      ${!a.substitute ? '<div><span class="badge warn">⚠️ No Available Substitute</span></div>' : (a.conflict ? '<div><span class="badge warn">⚠️ Conflict override</span></div>' : '')}
+      ${renderFreeTeacherList(a,i)}
+    </td>
+    <td class="noprint"><span class="tag-priority">${priorityLabel(a.priority)}${a.manual?' · Manual':''}</span></td>
+    <td class="noprint"><button class="btn ${a.locked?'primary':'ghost'} sm" onclick="toggleLock(${i})" ${!a.substitute?'disabled':''}>${a.locked?'🔒':'🔓'}</button></td>
+    <td class="noprint"><button class="btn ghost sm" onclick="toggleSkip(${i})">⏭ தவிர் / Skip</button></td>
+  </tr>`;
+}
+function renderFreeTeacherList(a,i){
+  const eligible = eligibleSubsForRow(i);
+  return `<div style="margin-top:6px;max-width:320px;">
+    <div style="font-size:10.5px;color:var(--ink-soft);margin-bottom:3px;">Period ${esc(a.period)}-ல் ஃப்ரீயாக உள்ள ஆசிரியர்கள் / Free teachers this period (${eligible.length}):</div>
+    <div>${eligible.length ? eligible.map(t=>`<span class="badge free" style="margin:2px 3px 0 0;cursor:pointer;" onclick="manualAssign(${i}, '${esc(t).replace(/'/g,"\\'")}', false)">${esc(t)}</span>`).join('') : '<span class="badge warn">யாரும் இல்லை / None free</span>'}</div>
+  </div>`;
+}
+function renderAssignmentCard(a,i){
+  if(a.skipped) return renderSkippedCard(a,i);
+  const eligible = eligibleSubsForRow(i);
+  const opts = state.master.teachers.filter(t=>!state.daily.absentTeachers.includes(t));
+  return `<div class="card" style="margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;"><b>Period ${esc(a.period)}</b><span>${esc(a.klass)}</span></div>
+    <div style="font-size:13px;color:var(--ink-soft);margin:4px 0;">${esc(a.subject)}</div>
+    <div style="margin:6px 0;"><span class="badge absent">Absent: ${esc(a.absentTeacher)}</span></div>
+    ${a.locked ? `<div><span class="badge locked">🔒 ${esc(a.substitute)}</span></div>` : `
+    <select style="width:100%;margin-top:6px;" onchange="manualAssign(${i}, this.value, false)">
+      <option value="">-- Select Substitute --</option>
+      ${opts.map(t=>`<option value="${esc(t)}" ${a.substitute===t?'selected':''}>${esc(t)}${eligible.includes(t)?'':' ⚠️ busy'}</option>`).join('')}
+    </select>`}
+    ${!a.substitute ? '<div style="margin-top:6px;"><span class="badge warn">⚠️ No Available Substitute</span></div>' : ''}
+    ${renderFreeTeacherList(a,i)}
+    <div style="display:flex;justify-content:space-between;margin-top:8px;">
+      <span class="tag-priority">${priorityLabel(a.priority)}</span>
+      <span style="display:flex;gap:6px;">
+        <button class="btn ghost sm" onclick="toggleSkip(${i})">⏭ தவிர் / Skip</button>
+        <button class="btn ${a.locked?'primary':'ghost'} sm" onclick="toggleLock(${i})" ${!a.substitute?'disabled':''}>${a.locked?'🔒 Locked':'🔓 Lock'}</button>
+      </span>
+    </div>
+  </div>`;
+}
+
+/* ============================= PAGE: TEACHER-WISE ============================= */
+function renderTeacherWise(){
+  const d = state.daily;
+  if(!d || !d.assignments.length) return emptyState('☺','பதில் பணிகள் இல்லை / No duties yet','இன்று பதில் பாட ஒழுங்கை உருவாக்கவும்','இன்றைய பதிலுக்கு செல் / Go to Daily Duty','daily');
+  const byTeacher = {};
+  d.assignments.filter(a=>a.substitute).forEach(a=>{
+    (byTeacher[a.substitute] = byTeacher[a.substitute]||[]).push(a);
+  });
+  const names = Object.keys(byTeacher).sort();
+  if(!names.length) return emptyState('☺','பணிகள் ஒதுக்கப்படவில்லை / No duties assigned yet','','இன்றைய பதிலுக்கு செல் / Go to Daily Duty','daily');
+  return names.map(n=>`<div class="card">
+    <h2>${esc(n)} <span style="font-size:12px;color:var(--ink-soft);font-weight:400;">— ${byTeacher[n].length} பணிகள் / duties</span></h2>
+    <div class="tablewrap"><table><thead><tr><th>Period</th><th>Class</th><th>Subject</th><th>Absent Teacher</th></tr></thead>
+    <tbody>${byTeacher[n].map(a=>`<tr><td>${esc(a.period)}</td><td>${esc(a.klass)}</td><td>${esc(a.subject)}</td><td>${esc(a.absentTeacher)}</td></tr>`).join('')}</tbody>
+    </table></div></div>`).join('');
+}
+
+/* ============================= PAGE: PERIOD-WISE ============================= */
+function renderPeriodWise(){
+  const d = state.daily;
+  if(!d || !d.assignments.length) return emptyState('⏱','பதிவுகள் இல்லை / No records yet','','இன்றைய பதிலுக்கு செல் / Go to Daily Duty','daily');
+  const byPeriod = {};
+  d.assignments.forEach(a=>{ (byPeriod[a.period]=byPeriod[a.period]||[]).push(a); });
+  const periods = Object.keys(byPeriod).sort((a,b)=>{ const na=parseFloat(a),nb=parseFloat(b); return (!isNaN(na)&&!isNaN(nb))?na-nb:a.localeCompare(b);});
+  return periods.map(p=>`<div class="card">
+    <h2>Period ${esc(p)}</h2>
+    <div class="tablewrap"><table><thead><tr><th>Class</th><th>Subject</th><th>Absent Teacher</th><th>Substitute</th></tr></thead>
+    <tbody>${byPeriod[p].map(a=>`<tr><td>${esc(a.klass)}</td><td>${esc(a.subject)}</td><td>${esc(a.absentTeacher)}</td><td>${subCell(a)}</td></tr>`).join('')}</tbody>
+    </table></div></div>`).join('');
+}
+
+/* ============================= PAGE: CLASS-WISE ============================= */
+function renderClassWise(){
+  const d = state.daily;
+  if(!d || !d.assignments.length) return emptyState('▥','பதிவுகள் இல்லை / No records yet','','இன்றைய பதிலுக்கு செல் / Go to Daily Duty','daily');
+  const byClass = {};
+  d.assignments.forEach(a=>{ (byClass[a.klass]=byClass[a.klass]||[]).push(a); });
+  const classes = Object.keys(byClass).sort();
+  return classes.map(c=>`<div class="card">
+    <h2>${esc(c)}</h2>
+    <div class="tablewrap"><table><thead><tr><th>Period</th><th>Subject</th><th>Absent Teacher</th><th>Substitute</th></tr></thead>
+    <tbody>${byClass[c].map(a=>`<tr><td>${esc(a.period)}</td><td>${esc(a.subject)}</td><td>${esc(a.absentTeacher)}</td><td>${subCell(a)}</td></tr>`).join('')}</tbody>
+    </table></div></div>`).join('');
+}
+
+/* ============================= PAGE: HISTORY ============================= */
+function renderHistory(){
+  if(state.historyView){
+    const r = state.historyView;
+    return `<div class="card noprint">
+      <button class="btn ghost sm" onclick="state.historyView=null; render();">← பட்டியலுக்கு திரும்பு / Back to list</button>
+    </div>
+    <div class="card">
+      <h2>${fmtDate(r.date)}</h2>
+      <div class="subhead">${r.absentTeachers.length} விடுமுறை ஆசிரியர்கள் / absent teachers — ${r.assignments.filter(a=>a.substitute).length} பணிகள் / duties assigned</div>
+      <div class="tablewrap"><table><thead><tr><th>Period</th><th>Class</th><th>Subject</th><th>Absent</th><th>Substitute</th></tr></thead>
+      <tbody>${r.assignments.map(a=>`<tr><td>${esc(a.period)}</td><td>${esc(a.klass)}</td><td>${esc(a.subject)}</td><td>${esc(a.absentTeacher)}</td><td>${subCell(a)}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
+  }
+  const dates = [...new Set([...state.historyDates, state.daily.date])].sort().reverse();
+  if(!dates.length) return emptyState('🗂','பதிவுகள் இல்லை / No history yet','','இன்றைய பதிலுக்கு செல் / Go to Daily Duty','daily');
+  return `<div class="card">
+    <h2>கடந்த நாள் பதிவுகள் / Daily Records</h2>
+    <div class="tablewrap"><table><thead><tr><th>Date</th><th></th></tr></thead>
+    <tbody>${dates.map(d=>`<tr><td>${fmtDate(d)}</td><td><button class="btn ghost sm" onclick="openHistoryDate('${d}')">பார் / View →</button></td></tr>`).join('')}</tbody>
+    </table></div>
+  </div>`;
+}
+
+/* ============================= PAGE: REPORTS (day/week/month counts) ============================= */
+function renderReports(){
+  if(state.allDailyRecords===null){
+    return `<div class="card empty"><div class="big">📊</div><p>தரவு ஏற்றப்படுகிறது / Loading records…</p></div>`;
+  }
+  const all = state.allDailyRecords;
+  if(!all.length) return emptyState('📊','பதிவுகள் இல்லை / No records yet','இன்றைய பதில் பாட ஒழுங்கை உருவாக்கிய பின் இங்கு எண்ணிக்கைகள் தெரியும் / Counts will appear here once you generate substitute duties.','இன்றைய பதிலுக்கு செல் / Go to Daily Duty','daily');
+
+  const ref = state.reportRefDate;
+  const gran = state.reportGranularity;
+  let rangeStart, rangeEnd, rangeLabelTa, rangeLabelEn;
+  if(gran==='day'){ rangeStart=ref; rangeEnd=ref; rangeLabelTa='நாள்'; rangeLabelEn='Day'; }
+  else if(gran==='week'){ rangeStart=startOfWeek(ref); rangeEnd=endOfWeek(ref); rangeLabelTa='வாரம்'; rangeLabelEn='Week'; }
+  else { const [s,e]=monthRange(ref); rangeStart=s; rangeEnd=e; rangeLabelTa='மாதம்'; rangeLabelEn='Month'; }
+
+  const inRange = all.filter(r => r.date >= rangeStart && r.date <= rangeEnd);
+  const byTeacher = {};
+  let totalDuties = 0, totalUnassigned = 0;
+  inRange.forEach(rec=>{
+    (rec.assignments||[]).forEach(a=>{
+      if(a.substitute){
+        byTeacher[a.substitute] = (byTeacher[a.substitute]||0)+1;
+        totalDuties++;
+      } else if(!a.skipped){
+        totalUnassigned++;
+      }
+    });
+  });
+  const names = Object.keys(byTeacher).sort((a,b)=>byTeacher[b]-byTeacher[a]);
+
+  return `<div class="card noprint">
+    <h2>பதில் பாட எண்ணிக்கை அறிக்கை / Duty Count Report</h2>
+    <div class="subhead">ஆசிரியர் ஒவ்வொருவரும் மேற்கொண்ட பதில் பாட எண்ணிக்கையை நாள் / வாரம் / மாதம் அடிப்படையில் பார்க்கவும் / View how many substitute duties each teacher took, by day, week, or month.</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;">
+      <div><label class="f">குறிப்பு திகதி / Reference Date</label>
+        <input type="date" value="${ref}" onchange="setReportRefDate(this.value)"></div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn ${gran==='day'?'primary':'ghost'} sm" onclick="setReportGranularity('day')">நாள் / Day</button>
+        <button class="btn ${gran==='week'?'primary':'ghost'} sm" onclick="setReportGranularity('week')">வாரம் / Week</button>
+        <button class="btn ${gran==='month'?'primary':'ghost'} sm" onclick="setReportGranularity('month')">மாதம் / Month</button>
+      </div>
+    </div>
+  </div>
+  <div class="statgrid">
+    ${stat(names.length,'பதில் பணி செய்த ஆசிரியர்கள் / Teachers with Duties','')}
+    ${stat(totalDuties,rangeLabelTa+' மொத்த பதில் பாடங்கள் / Total Duties ('+rangeLabelEn+')','green')}
+    ${stat(totalUnassigned,'ஒதுக்கப்படாதவை / Unassigned','red')}
+    ${stat(inRange.length,'பதிவு செய்யப்பட்ட நாட்கள் / Days Recorded','amber')}
+  </div>
+  <div class="card">
+    <h2>${rangeLabelTa} / ${rangeLabelEn}: ${fmtDate(rangeStart)}${rangeEnd!==rangeStart? ' – '+fmtDate(rangeEnd):''}</h2>
+    ${names.length? `<div class="tablewrap"><table><thead><tr><th>ஆசிரியர் / Teacher</th><th>பதில் பாட எண்ணிக்கை / Duty Count</th></tr></thead>
+      <tbody>${names.map(n=>`<tr><td>${esc(n)}</td><td><b>${byTeacher[n]}</b></td></tr>`).join('')}</tbody></table></div>`
+      : `<p style="color:var(--ink-soft);font-size:13.5px;">இந்த காலப்பகுதியில் பதிவுகள் இல்லை / No duties recorded in this period.</p>`}
+  </div>`;
+}
+
+/* ============================= PAGE: SETTINGS ============================= */
+function renderSettings(){
+  const s = state.settings;
+  return `<div class="card">
+    <h2>பள்ளி அமைப்புகள் / School Settings</h2>
+    <form id="settingsForm" onsubmit="event.preventDefault(); saveSettings(this);">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+        <div><label class="f">பள்ளியின் பெயர் / School Name</label>
+          <input type="text" name="schoolName" value="${esc(s.schoolName)}" style="width:100%;"></div>
+        <div><label class="f">முகவரி / Address</label>
+          <input type="text" name="address" value="${esc(s.address)}" style="width:100%;"></div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label class="f">அறிக்கையில் மொழி வரிசை / Language order in reports</label>
+        <select name="langOrder">
+          <option value="ta-en" ${s.langOrder==='ta-en'?'selected':''}>தமிழ் முதலில் / Tamil first</option>
+          <option value="en-ta" ${s.langOrder==='en-ta'?'selected':''}>English first</option>
+        </select>
+      </div>
+      <button class="btn primary" type="submit">சேமி / Save Settings</button>
+    </form>
+    <div class="hr"></div>
+    <label class="f">பள்ளி லோகோ / School Logo</label>
+    ${s.logo ? `<img src="${s.logo}" style="height:60px;display:block;margin-bottom:8px;">` : ''}
+    <input type="file" accept="image/*" onchange="handleLogoUpload(this)">
+  </div>
+  <div class="card">
+    <h2>Excel தேவையான வடிவமைப்பு / Required Excel Format</h2>
+    <p style="font-size:13px;color:var(--ink-soft);">ஐந்து கோலங்கள் / Five columns:</p>
+    <ol style="font-size:13.5px;">
+      <li>தொடர் இலக்கம் (Serial No)</li>
+      <li>ஆசிரியரின் பெயர் (Teacher Name)</li>
+      <li>பாட வேளை (Period)</li>
+      <li>கற்பிக்கும் பாடம் (Subject) — "—" = FREE period</li>
+      <li>வகுப்பு (Class)</li>
+    </ol>
+  </div>`;
+}
+
+/* ============================= INIT ============================= */
+window.__teacherSearch = '';
+loadEverything();
+</script>
+</body>
+</html>
